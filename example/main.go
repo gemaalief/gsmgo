@@ -7,7 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/gen2brain/gsmgo"
+	gsm "github.com/gemaalief/gsmgo"
 )
 
 func main() {
@@ -15,6 +15,7 @@ func main() {
 	debug := flag.Bool("debug", false, "Enable debugging")
 	text := flag.String("text", "", "Text Message")
 	number := flag.String("number", "", "Phone Number")
+	sectionPtr := flag.Int("section", 0, "called gammu section")
 	flag.Parse()
 
 	if *text == "" || *number == "" {
@@ -59,7 +60,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = g.SetConfig(config)
+	var section int
+	if *sectionPtr != 0 {
+		section = *sectionPtr
+	}
+
+	err = g.SetConfig(config, section)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}

@@ -11,7 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/gen2brain/gsmgo"
+	gsm "github.com/gemaalief/gsmgo"
 )
 
 var (
@@ -105,6 +105,7 @@ func main() {
 	debug := flag.Bool("debug", false, "Enable debugging")
 	username = flag.String("username", "", "Username")
 	password = flag.String("password", "", "Password")
+	sectionPtr := flag.Int("section", 0, "called gammu section")
 	flag.Parse()
 
 	var err error
@@ -141,7 +142,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = g.SetConfig(config)
+	var section int
+	if *sectionPtr != 0 {
+		section = *sectionPtr
+	}
+
+	err = g.SetConfig(config, section)
 	if err != nil {
 		log.Printf("Error SetConfig: %v", err)
 	}

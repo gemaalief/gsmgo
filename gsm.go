@@ -78,7 +78,7 @@ func (g *GSM) Connect() (err error) {
 }
 
 // Reads configuration file
-func (g *GSM) SetConfig(config string) (err error) {
+func (g *GSM) SetConfig(config string, section int) (err error) {
 	path := C.CString(config)
 	defer C.free(unsafe.Pointer(path))
 
@@ -93,7 +93,7 @@ func (g *GSM) SetConfig(config string) (err error) {
 	}
 
 	// read it
-	e = C.GSM_ReadConfig(cfg, C.GSM_GetConfig(g.sm, 0), 0)
+	e = C.GSM_ReadConfig(cfg, C.GSM_GetConfig(g.sm, 0), C.int(section))
 	if e != ERR_NONE {
 		err = errors.New(errorString(int(e)))
 		return
@@ -114,8 +114,8 @@ func (g *GSM) SendSMS(text, number string) (err error) {
 	sms.Coding = C.SMS_Coding_Default_No_Compression // default coding for text
 	sms.Class = 1                                    // class 1 message (normal)
 
-	C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Text)), C.CString(text), C.int(len(text)))
-	C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Number)), C.CString(number), C.int(len(number)))
+	C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Text)), C.CString(text), C.ulong(len(text)))
+	C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Number)), C.CString(number), C.ulong(len(number)))
 
 	// we need to know SMSC number
 	smsc.Location = 1
