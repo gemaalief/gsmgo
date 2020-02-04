@@ -153,6 +153,77 @@ func (g *GSM) SendSMS(text, number string) (err error) {
 	return
 }
 
+func (g *GSM) SendLongSMS(text, number string) (err error) {
+	var sms C.GSM_MultiSMSMessage
+	var smsInfo C.GSM_MultiPartSMSInfo
+	var smsc C.GSM_SMSC
+	//var debugInfo *C.GSM_Debug_Info
+	temp := text + text + "aa" //buffer size is 2*(len(text) + 1)
+	bufferText := (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+
+	C.GSM_ClearMultiPartSMSInfo(&smsInfo)
+	smsInfo.Class = 1
+	smsInfo.EntriesNum = 1
+	smsInfo.UnicodeCoding = C.gboolean(0)
+	smsInfo.Entries[0].ID = C.SMS_ConcatenatedTextLong
+	C.EncodeUnicode(bufferText, C.CString(text), C.ulong(len(text)))
+	smsInfo.Entries[0].Buffer = bufferText
+
+	e := C.GSM_EncodeMultiPartSMS(nil, &smsInfo, &sms)
+	if e != ERR_NONE {
+		err = errors.New(errorString(int(e)))
+	}
+
+	/*
+		sms.PDU = C.SMS_Submit                           // submit message
+		sms.UDH.Type = C.UDH_NoUDH                       // no UDH, just a plain message
+		sms.Coding = C.SMS_Coding_Default_No_Compression // default coding for text
+		sms.Class = 1                                    // class 1 message (normal)
+
+		C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Text)), C.CString(text), C.ulong(len(text)))
+		C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.Number)), C.CString(number), C.ulong(len(number)))
+	*/
+
+	// we need to know SMSC number
+	smsc.Location = 1
+	e = C.GSM_GetSMSC(g.sm, &smsc)
+	if e != ERR_NONE {
+		err = errors.New(errorString(int(e)))
+		return
+	}
+
+	for i := 0; i < int(sms.Number); i++ {
+		// set SMSC number in message
+		sms.SMS[i].SMSC.Number = smsc.Number
+
+		C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number)), C.CString(number), C.ulong(len(number)))
+		sms.SMS[i].PDU = C.SMS_Submit
+		// Set flag before callind SendSMS, some phones might give instant response
+		smsSendStatus = ERR_TIMEOUT
+
+		// send message
+		e = C.GSM_SendSMS(g.sm, &sms.SMS[i])
+		if e != ERR_NONE {
+			err = errors.New(errorString(int(e)))
+			return
+		}
+
+		// wait for network reply
+		for {
+			C.GSM_ReadDevice(g.sm, C.gboolean(1))
+			if smsSendStatus == ERR_NONE {
+				break
+			}
+			if smsSendStatus != ERR_TIMEOUT {
+				err = errors.New(errorString(int(smsSendStatus)))
+				break
+			}
+		}
+	}
+
+	return
+}
+
 // Terminates connection and free memory
 func (g *GSM) Terminate() (err error) {
 	// terminate connection

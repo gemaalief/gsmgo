@@ -55,19 +55,24 @@ func handleSMS(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	if len(text) > 160 {
-		js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": "Message exceeds 160 characters"}, "", "    ")
-		w.Write(js)
-		return
-	}
-
-	err = g.SendSMS(text, number)
-	if err != nil {
-		js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
-		w.Write(js)
+	if len(text) <= 160 {
+		err = g.SendSMS(text, number)
+		if err != nil {
+			js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
+			w.Write(js)
+		} else {
+			js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
+			w.Write(js)
+		}
 	} else {
-		js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
-		w.Write(js)
+		err = g.SendLongSMS(text, number)
+		if err != nil {
+			js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
+			w.Write(js)
+		} else {
+			js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
+			w.Write(js)
+		}
 	}
 }
 
