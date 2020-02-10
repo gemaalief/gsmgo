@@ -13,19 +13,28 @@ import (
 func main() {
 	cfg := flag.String("config", "", "Config file")
 	debug := flag.Bool("debug", false, "Enable debugging")
+	mode := flag.String("mode", "sms", "select mode : [sms | ussd]")
+	code := flag.String("code", "", "ussd code")
 	text := flag.String("text", "", "Text Message")
 	number := flag.String("number", "", "Phone Number")
 	sectionPtr := flag.Int("section", 0, "called gammu section")
 	flag.Parse()
 
-	if *text == "" || *number == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
+	if *mode == "sms" {
+		if *text == "" || *number == "" {
+			flag.Usage()
+			os.Exit(1)
+		}
 
-	if len(*text) > 160 {
-		fmt.Println("Message exceeds 160 characters")
-		os.Exit(1)
+		if len(*text) > 160 {
+			fmt.Println("Message exceeds 160 characters")
+			os.Exit(1)
+		}
+	} else {
+		if *code == "" {
+			flag.Usage()
+			os.Exit(1)
+		}
 	}
 
 	g, err := gsm.NewGSM()
@@ -80,8 +89,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = g.SendSMS(*text, *number)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+	if *mode == "sms" {
+		err = g.SendSMS(*text, *number)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+	} else {
+		result, err := g.GetUSSDByCode("*888*5#")
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		fmt.Println(result)
 	}
 }

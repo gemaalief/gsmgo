@@ -22,9 +22,11 @@ package gsm
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"time"
 	"unsafe"
 )
 
@@ -43,7 +45,8 @@ func errorString(e int) string {
 
 // Gammu GSM struct
 type GSM struct {
-	sm *C.GSM_StateMachine
+	sm    *C.GSM_StateMachine
+	modem *Modem
 }
 
 // Returns new GSM
@@ -234,6 +237,9 @@ func (g *GSM) Terminate() (err error) {
 
 	// free up used memory
 	C.GSM_FreeStateMachine(g.sm)
+	if g.modem != nil {
+		g.modem.close()
+	}
 	return
 }
 
@@ -253,4 +259,55 @@ func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.in
 		log.Printf(t+"ERROR %d\n", int(status))
 		smsSendStatus = ERR_UNKNOWN
 	}
+}
+
+func (g *GSM) GetUSSDByCode(code string) (string, error) {
+	deviceName := C.GoString(C.GSM_GetConfig(g.sm, -1).Device)
+	isConnectedBefore := false
+	if g.IsConnected() {
+		isConnectedBefore = true
+		e := C.GSM_TerminateConnection(g.sm)
+		if e != ERR_NONE {
+			return "", errors.New(errorString(int(e)))
+		}
+	}
+	if !g.IsConnected() && isConnectedBefore {
+		defer func() {
+			err := g.Connect()
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		}()
+	}
+	if g.modem == nil {
+		m, err := NewModem(deviceName)
+		if err != nil {
+			log.Printf("error open ussd port : %s", err.Error())
+		}
+		g.modem = m
+	}
+	if g.modem != nil {
+		_, err := g.modem.SendCommand("AT+CSCS=\"GSM\"\r\n", true)
+		if err != nil {
+			log.Printf("error : %s", err.Error())
+			return "", err
+		}
+		_, err = g.modem.SendCommand(fmt.Sprintf("AT+CUSD=1,\"%s\",15\r\n", code), true)
+		if err != nil {
+			log.Printf("error : %s", err.Error())
+			return "", err
+		}
+
+		//time.Sleep(1 * time.Second)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		output, err := g.modem.ReadWithTimeout(ctx)
+		if err != nil {
+			return "", err
+		}
+		return output, nil
+	}
+	return "", nil
 }
