@@ -30,7 +30,7 @@ func main() {
 			fmt.Println("Message exceeds 160 characters")
 			os.Exit(1)
 		}
-	} else {
+	} else if *mode == "ussd" {
 		if *code == "" {
 			flag.Usage()
 			os.Exit(1)
@@ -94,11 +94,19 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
-	} else {
-		result, err := g.GetUSSDByCode("*888*5#")
+	} else if *mode == "ussd" {
+		result, err := g.GetUSSDByCode(*code)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
 		fmt.Println(result)
+	} else if *mode == "read" {
+		result, err := g.ReadSMS()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		for _, msg := range result {
+			fmt.Printf("%s : %s\n", msg.Number, msg.Text)
+		}
 	}
 }

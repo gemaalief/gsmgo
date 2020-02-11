@@ -44,35 +44,42 @@ func handleSMS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-
+	mode, modeOK := j["mode"]
+	code, codeOK := j["code"]
 	text, textOk := j["text"]
 	number, numberOk := j["number"]
+	if !modeOK {
+		mode = "sms"
+	}
 
-	if !textOk || !numberOk {
+	if (mode == "sms" && (!textOk || !numberOk)) || (mode == "ussd" && !codeOK) {
 		http.Error(w, "400 Bad Request", http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	if len(text) <= 160 {
-		err = g.SendSMS(text, number)
-		if err != nil {
-			js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
-			w.Write(js)
+	if mode == "sms" {
+		if len(text) <= 160 {
+			err = g.SendSMS(text, number)
+			if err != nil {
+				js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
+				w.Write(js)
+			} else {
+				js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
+				w.Write(js)
+			}
 		} else {
-			js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
-			w.Write(js)
+			err = g.SendLongSMS(text, number)
+			if err != nil {
+				js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
+				w.Write(js)
+			} else {
+				js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
+				w.Write(js)
+			}
 		}
-	} else {
-		err = g.SendLongSMS(text, number)
-		if err != nil {
-			js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
-			w.Write(js)
-		} else {
-			js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success"}, "", "    ")
-			w.Write(js)
-		}
+	} else if mode == "ussd" {
+		g.GetUSSDByCode(code)
 	}
 }
 

@@ -19,6 +19,7 @@ package gsm
 // #include <stdio.h>
 // #include <gammu.h>
 // extern void sendSMSCallback(GSM_StateMachine *sm, int status, int messageReference, void * user_data);
+// extern void getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer)
 import "C"
 
 import (
@@ -30,12 +31,23 @@ import (
 	"unsafe"
 )
 
+type SmsRead struct {
+	Location int
+	Folder   int
+	Number   string
+	Text     string
+}
+
 var smsSendStatus C.GSM_Error
+var smsReadStatus C.GSM_Error
+
+var callBack func(number, text string) error
 
 const (
 	ERR_NONE    = C.ERR_NONE
 	ERR_UNKNOWN = C.ERR_UNKNOWN
 	ERR_TIMEOUT = C.ERR_TIMEOUT
+	ERR_EMPTY   = C.ERR_EMPTY
 )
 
 // Returns error message string
@@ -56,6 +68,10 @@ func NewGSM() (g *GSM, err error) {
 
 	if g.sm == nil {
 		err = errors.New("Cannot allocate state machine")
+	}
+
+	callBack = func(number, text string) error {
+		log.Printf("%s : %s\n", number, text)
 	}
 
 	return
@@ -227,6 +243,39 @@ func (g *GSM) SendLongSMS(text, number string) (err error) {
 	return
 }
 
+func (g *GSM) ReadSMS() (messages []*SmsRead, err error) {
+	var sms C.GSM_MultiSMSMessage
+
+	smsReadStatus = ERR_NONE
+	start := C.gboolean(1)
+	sms.Number = C.int(0)
+	sms.SMS[0].Location = C.int(0)
+	sms.SMS[0].Folder = C.int(0)
+
+	for {
+		smsReadStatus = C.GSM_GetNextSMS(g.sm, &sms, start)
+		if smsReadStatus != ERR_NONE {
+			if smsReadStatus != ERR_EMPTY {
+				err = errors.New(errorString(int(smsReadStatus)))
+				return
+			}
+			break
+		}
+		start = C.gboolean(0)
+		for i := 0; i < int(sms.Number); i++ {
+			if sms.SMS[i].Coding == C.SMS_Coding_8bit {
+				log.Println("8-bit message, can not display")
+			} else {
+				number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number))))
+				t := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Text))))
+				messages = append(messages, &SmsRead{int(sms.SMS[i].Location), int(sms.SMS[i].Folder), number, t})
+			}
+		}
+	}
+
+	return
+}
+
 // Terminates connection and free memory
 func (g *GSM) Terminate() (err error) {
 	// terminate connection
@@ -248,6 +297,14 @@ func (g *GSM) IsConnected() bool {
 	return int(C.GSM_IsConnected(g.sm)) != 0
 }
 
+func (g *GSM) WaitForSMS(wait int) error {
+	e := C.GSM_SetIncomingSMS(g.sm, C.gboolean(wait))
+	if e != ERR_NONE {
+		return errors.New(errorString(int(e)))
+	}
+	return nil
+}
+
 // Callback for message sending
 //export sendSMSCallback
 func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.int, user_data unsafe.Pointer) {
@@ -258,6 +315,19 @@ func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.in
 	} else {
 		log.Printf(t+"ERROR %d\n", int(status))
 		smsSendStatus = ERR_UNKNOWN
+	}
+}
+
+// Callback for message sending
+//export getSMSCallback
+func getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer) {
+	t := fmt.Sprintf("Get SMS on device %s - ", C.GoString(C.GSM_GetConfig(sm, -1).Device))
+	number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Number))))
+	text := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Text))))
+
+	err := callBack(number, text)
+	if err != nil {
+		log.Printf("error : %s", err.Error())
 	}
 }
 
@@ -275,7 +345,7 @@ func (g *GSM) GetUSSDByCode(code string) (string, error) {
 		defer func() {
 			err := g.Connect()
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				log.Printf("Error: %v\n", err)
 			}
 		}()
 	}
@@ -298,8 +368,6 @@ func (g *GSM) GetUSSDByCode(code string) (string, error) {
 			return "", err
 		}
 
-		//time.Sleep(1 * time.Second)
-
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -310,4 +378,8 @@ func (g *GSM) GetUSSDByCode(code string) (string, error) {
 		return output, nil
 	}
 	return "", nil
+}
+
+func (g *GSM) SetCallBack(fx func(string, string) error) {
+	callBack = fx
 }
