@@ -296,6 +296,10 @@ func (g *GSM) Terminate() (err error) {
 
 // Checks if phone is connected
 func (g *GSM) IsConnected() bool {
+	if g.sm == nil {
+		return false
+	}
+
 	return int(C.GSM_IsConnected(g.sm)) != 0
 }
 
@@ -332,8 +336,11 @@ func getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data uns
 	}
 }
 
-func (g *GSM) GetUSSDByCode(code string) (string, error) {
-	deviceName := C.GoString(C.GSM_GetConfig(g.sm, -1).Device)
+func (g *GSM) GetUSSDByCode(code string, device string) (string, error) {
+	deviceName := device
+	if device == "" && g.sm != nil {
+		deviceName = C.GoString(C.GSM_GetConfig(g.sm, -1).Device)
+	}
 	isConnectedBefore := false
 	if g.IsConnected() {
 		isConnectedBefore = true

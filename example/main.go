@@ -95,7 +95,7 @@ func main() {
 			fmt.Printf("Error: %v\n", err)
 		}
 	} else if *mode == "ussd" {
-		result, err := g.GetUSSDByCode(*code)
+		result, err := g.GetUSSDByCode(*code, "")
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
