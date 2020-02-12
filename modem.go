@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -94,7 +93,7 @@ func (m *Modem) Read() (string, error) {
 func (m *Modem) ReadWithTimeout(ctx context.Context) (string, error) {
 	select {
 	case <-ctx.Done():
-		return "", fmt.Errorf("context timeout, ran out of time")
+		return "", errors.New("context timeout, ran out of time")
 	case respChan := <-m.ReadWithContext(ctx):
 		return respChan.result, respChan.err
 	}

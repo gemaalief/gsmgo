@@ -19,7 +19,7 @@ package gsm
 // #include <stdio.h>
 // #include <gammu.h>
 // extern void sendSMSCallback(GSM_StateMachine *sm, int status, int messageReference, void * user_data);
-// extern void getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer)
+// extern void getSMSCallback(GSM_StateMachine *sm, GSM_SMSMessage *sms, void * user_data);
 import "C"
 
 import (
@@ -72,6 +72,7 @@ func NewGSM() (g *GSM, err error) {
 
 	callBack = func(number, text string) error {
 		log.Printf("%s : %s\n", number, text)
+		return nil
 	}
 
 	return
@@ -93,6 +94,7 @@ func (g *GSM) Connect() (err error) {
 
 	// set callback for message sending
 	C.GSM_SetSendSMSStatusCallback(g.sm, (C.SendSMSStatusCallback)(unsafe.Pointer(C.sendSMSCallback)), nil)
+	C.GSM_SetIncomingSMSCallback(g.sm, (C.IncomingSMSCallback)(unsafe.Pointer(C.getSMSCallback)), nil)
 	return
 }
 
@@ -321,7 +323,6 @@ func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.in
 // Callback for message sending
 //export getSMSCallback
 func getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer) {
-	t := fmt.Sprintf("Get SMS on device %s - ", C.GoString(C.GSM_GetConfig(sm, -1).Device))
 	number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Number))))
 	text := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Text))))
 

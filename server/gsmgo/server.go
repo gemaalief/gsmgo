@@ -79,7 +79,14 @@ func handleSMS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if mode == "ussd" {
-		g.GetUSSDByCode(code)
+		msg, err := g.GetUSSDByCode(code)
+		if err != nil {
+			js, _ := json.MarshalIndent(map[string]string{"status": "ERROR", "message": err.Error()}, "", "    ")
+			w.Write(js)
+		} else {
+			js, _ := json.MarshalIndent(map[string]string{"status": "OK", "message": "success", "data": msg}, "", "    ")
+			w.Write(js)
+		}
 	}
 }
 
