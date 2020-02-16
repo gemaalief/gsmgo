@@ -342,7 +342,6 @@ func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.in
 // Callback for message sending
 //export getSMSCallback
 func getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer) {
-	var msms C.GSM_MultiSMSMessage
 	number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Number))))
 	text := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Text))))
 	err := callBack(number, text)
