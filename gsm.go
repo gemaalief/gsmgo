@@ -256,7 +256,7 @@ func (g *GSM) SendLongSMS(text, number string) (err error) {
 	return
 }
 
-func (g *GSM) ReadSMS() (messages []*SmsRead, err error) {
+func (g *GSM) ReadSMS(delete bool) (messages []*SmsRead, err error) {
 	var sms C.GSM_MultiSMSMessage
 
 	smsReadStatus = ERR_NONE
@@ -282,6 +282,13 @@ func (g *GSM) ReadSMS() (messages []*SmsRead, err error) {
 				number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number))))
 				t := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Text))))
 				messages = append(messages, &SmsRead{int(sms.SMS[i].Location), int(sms.SMS[i].Folder), number, t})
+				if delete {
+					e := C.GSM_DeleteSMS(g.sm, &sms.SMS[i])
+					if e != ERR_NONE {
+						err = errors.New(errorString(int(e)))
+						return
+					}
+				}
 			}
 		}
 	}

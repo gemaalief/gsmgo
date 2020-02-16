@@ -101,7 +101,7 @@ func main() {
 		}
 		fmt.Println(result)
 	} else if *mode == "read" {
-		result, err := g.ReadSMS()
+		result, err := g.ReadSMS(true)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
