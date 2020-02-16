@@ -282,10 +282,6 @@ func (g *GSM) ReadSMS() (messages []*SmsRead, err error) {
 				number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number))))
 				t := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Text))))
 				messages = append(messages, &SmsRead{int(sms.SMS[i].Location), int(sms.SMS[i].Folder), number, t})
-				err := callBack(number, t)
-				if err != nil {
-					log.Printf("error : %s", err.Error())
-				}
 			}
 		}
 	}
