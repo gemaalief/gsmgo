@@ -176,6 +176,17 @@ func main() {
 		log.Printf("Error Connect: %v", err)
 	}
 
+	cb := func(tes, tes2 string) error {
+		log.Println(tes + " - " + tes2)
+		return nil
+	}
+	g.SetCallBack(cb)
+
+	err = g.WaitForSMS(1)
+	if err != nil {
+		log.Printf("Error WaitForSMS: %v", err)
+	}
+
 	if !g.IsConnected() {
 		log.Printf("Phone is not connected")
 		os.Exit(1)

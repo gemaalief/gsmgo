@@ -108,5 +108,16 @@ func main() {
 		for _, msg := range result {
 			fmt.Printf("%s : %s\n", msg.Number, msg.Text)
 		}
+	} else if *mode == "receive" {
+		cb := func(tes, tes2 string) error {
+			fmt.Println(tes + " - " + tes2)
+			return nil
+		}
+		g.SetCallBack(cb)
+		err := g.WaitForSMS(1)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		g.AlwaysReadUntilBreak()
 	}
 }

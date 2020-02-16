@@ -40,6 +40,7 @@ type SmsRead struct {
 
 var smsSendStatus C.GSM_Error
 var smsReadStatus C.GSM_Error
+var smsReceivedStatus C.GSM_Error
 
 var callBack func(number, text string) error
 
@@ -174,6 +175,16 @@ func (g *GSM) SendSMS(text, number string) (err error) {
 	return
 }
 
+func (g *GSM) AlwaysReadUntilBreak() {
+	smsReceivedStatus = ERR_TIMEOUT
+	for {
+		C.GSM_ReadDevice(g.sm, C.gboolean(1))
+		if smsReceivedStatus == ERR_NONE {
+			break
+		}
+	}
+}
+
 func (g *GSM) SendLongSMS(text, number string) (err error) {
 	var sms C.GSM_MultiSMSMessage
 	var smsInfo C.GSM_MultiPartSMSInfo
@@ -271,6 +282,10 @@ func (g *GSM) ReadSMS() (messages []*SmsRead, err error) {
 				number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number))))
 				t := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Text))))
 				messages = append(messages, &SmsRead{int(sms.SMS[i].Location), int(sms.SMS[i].Folder), number, t})
+				err := callBack(number, t)
+				if err != nil {
+					log.Printf("error : %s", err.Error())
+				}
 			}
 		}
 	}
@@ -327,10 +342,14 @@ func sendSMSCallback(sm *C.GSM_StateMachine, status C.int, messageReference C.in
 // Callback for message sending
 //export getSMSCallback
 func getSMSCallback(sm *C.GSM_StateMachine, sms *C.GSM_SMSMessage, user_data unsafe.Pointer) {
+	var msms C.GSM_MultiSMSMessage
 	number := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Number))))
 	text := C.GoString(C.DecodeUnicodeConsole((*C.uchar)(unsafe.Pointer(&sms.Text))))
-
 	err := callBack(number, text)
+	if err != nil {
+		log.Printf("error : %s", err.Error())
+	}
+	smsReceivedStatus = ERR_NONE
 	if err != nil {
 		log.Printf("error : %s", err.Error())
 	}
