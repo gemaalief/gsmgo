@@ -397,7 +397,7 @@ func (g *GSM) GetUSSDByCode(code string, device string) (string, error) {
 			return "", err
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		output, err := g.modem.ReadWithTimeout(ctx)
