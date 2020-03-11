@@ -36,6 +36,11 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if *mode == "smsd" {
+		gsm.StartSMSD(*cfg, "smsd-test")
+
+		return
+	}
 
 	g, err := gsm.NewGSM()
 	if err != nil {
@@ -101,7 +106,7 @@ func main() {
 		}
 		fmt.Println(result)
 	} else if *mode == "read" {
-		result, err := g.ReadSMS(true)
+		result, err := g.ReadSMS(false)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}

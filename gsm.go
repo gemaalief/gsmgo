@@ -131,7 +131,7 @@ func (g *GSM) SendSMS(text, number string) (err error) {
 	var sms C.GSM_SMSMessage
 	var smsc C.GSM_SMSC
 
-	sms.PDU = C.SMS_Submit                           // submit message
+	sms.PDU = C.SMS_Status_Report                    // submit message
 	sms.UDH.Type = C.UDH_NoUDH                       // no UDH, just a plain message
 	sms.Coding = C.SMS_Coding_Default_No_Compression // default coding for text
 	sms.Class = 1                                    // class 1 message (normal)
@@ -229,7 +229,7 @@ func (g *GSM) SendLongSMS(text, number string) (err error) {
 		sms.SMS[i].SMSC.Number = smsc.Number
 
 		C.EncodeUnicode((*C.uchar)(unsafe.Pointer(&sms.SMS[i].Number)), C.CString(number), C.ulong(len(number)))
-		sms.SMS[i].PDU = C.SMS_Submit
+		sms.SMS[i].PDU = C.SMS_Status_Report
 		// Set flag before callind SendSMS, some phones might give instant response
 		smsSendStatus = ERR_TIMEOUT
 
